@@ -56,18 +56,32 @@ export default function Scanner({ onConnect }) {
     return () => { cancelled = true; stop() }
   }, [])
 
-  async function tryConnect(url) {
-    url = url.replace(/\/$/, '')
+  async function tryConnect(raw) {
+    let serverUrl, token
+    try {
+      const parsed = new URL(raw.trim())
+      token = parsed.searchParams.get('t')
+      parsed.search = ''
+      serverUrl = parsed.toString().replace(/\/$/, '')
+    } catch {
+      setStatus('That QR code doesn\'t look like a PPT Remote link.')
+      return
+    }
+    if (!token) {
+      setStatus('This link is missing its access code — rescan the current QR on the PC.')
+      return
+    }
+
     setConnecting(true)
     setStatus('Connecting…')
     try {
-      const r = await fetch(url + '/api/ping')
+      const r = await fetch(`${serverUrl}/api/ping?t=${encodeURIComponent(token)}`)
       if (!r.ok) throw new Error()
       if (navigator.vibrate) navigator.vibrate(15)
-      onConnect(url)
+      onConnect({ serverUrl, token })
     } catch {
       setConnecting(false)
-      setStatus('Could not reach server — check WiFi, or trust its certificate first.')
+      setStatus('Could not reach server — check you\'re on the same WiFi as the PC.')
     }
   }
 
@@ -94,13 +108,16 @@ export default function Scanner({ onConnect }) {
 
       <div className="manual-entry">
         <input
-          placeholder="https://192.168.x.x:5000"
+          placeholder="http://192.168.x.x:5000/?t=..."
           value={manualUrl}
           onChange={e => setManualUrl(e.target.value)}
         />
         <button onClick={() => manualUrl.trim() && tryConnect(manualUrl.trim())}>
           Connect
         </button>
+      </div>
+      <div className="scan-caption" style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>
+        Paste the full link shown under the QR on the PC — it includes the access code.
       </div>
     </div>
   )

@@ -1,21 +1,27 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Play, Square, QrCode } from 'lucide-react'
 
-export default function Control({ serverUrl, onDisconnect }) {
+export default function Control({ serverUrl, token, onDisconnect }) {
   const [data, setData] = useState({ slide: null, total: null, notes: '', title: 'PPT Remote' })
   const [connected, setConnected] = useState(false)
   const busyRef = useRef(false)
 
+  const withToken = useCallback((path) => {
+    const sep = path.includes('?') ? '&' : '?'
+    return `${serverUrl}${path}${sep}t=${encodeURIComponent(token)}`
+  }, [serverUrl, token])
+
   const poll = useCallback(async () => {
     try {
-      const r = await fetch(serverUrl + '/api/state')
+      const r = await fetch(withToken('/api/state'))
+      if (r.status === 401) { onDisconnect(); return }
       if (!r.ok) throw new Error()
       setData(await r.json())
       setConnected(true)
     } catch {
       setConnected(false)
     }
-  }, [serverUrl])
+  }, [withToken, onDisconnect])
 
   useEffect(() => {
     poll()
@@ -28,7 +34,8 @@ export default function Control({ serverUrl, onDisconnect }) {
     busyRef.current = true
     if (navigator.vibrate) navigator.vibrate(8)
     try {
-      await fetch(`${serverUrl}/api/${action}`, { method: 'POST' })
+      const r = await fetch(withToken(`/api/${action}`), { method: 'POST' })
+      if (r.status === 401) { onDisconnect(); return }
     } finally {
       setTimeout(() => { poll(); busyRef.current = false }, 150)
     }
