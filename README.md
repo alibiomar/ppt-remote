@@ -1,16 +1,79 @@
-# React + Vite
+# PPT Remote
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Control a PowerPoint presentation from your phone. Scan a QR code to
+connect, flip slides, and read speaker notes live — no cables, no
+PowerPoint Presenter View needed.
 
-Currently, two official plugins are available:
+## How it works
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```
+┌─────────────┐        HTTPS/QR         ┌──────────────────┐        COM        ┌─────────────┐
+│  Phone (PWA) │ ───────────────────────▶│  Desktop app (PC) │ ─────────────────▶│  PowerPoint  │
+│  React app   │◀─────────────────────── │  Flask + cheroot  │◀────────────────── │              │
+└─────────────┘      next/prev/state     └──────────────────┘                   └─────────────┘
+```
 
-## React Compiler
+- **`ppt-remote-desktop/`** — Windows desktop app. Shows a QR code,
+  runs a local HTTPS server, drives PowerPoint via COM automation.
+- **`ppt-remote-react/`** — Phone-side PWA (React + Vite). Opens
+  straight into a camera scanner; scan the desktop app's QR to connect.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Quick start
 
-## Expanding the Oxlint configuration
+**On the PC:**
+```bash
+cd ppt-remote-desktop
+pip install flask cheroot cryptography qrcode[pil] pywin32 pillow
+python app.py
+```
+Open your presentation in PowerPoint first. A window appears with a
+QR code and an HTTPS URL.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+**On the phone:**
+```bash
+cd ppt-remote-react
+npm install
+npm run build
+vercel --prod   # or serve dist/ any static host
+```
+Open the deployed URL on your phone. The scanner opens automatically.
+
+**One-time per phone:** the desktop app uses a self-signed cert.
+Visit its URL directly in the phone browser once and accept the
+"not secure" warning — otherwise the scan connects but requests fail
+silently.
+
+## Features
+- QR-based pairing, no manual IP typing
+- Live speaker notes, polled every second
+- Next / Prev / Start / End show controls
+- Installable as a PWA (Add to Home Screen)
+- iOS-style UI with light/dark mode
+- Production WSGI server (cheroot) on the desktop side
+
+## Build a standalone .exe
+```bash
+cd ppt-remote-desktop
+pip install pyinstaller
+pyinstaller --onefile --noconsole --name "PPT Remote" app.py
+```
+
+## Requirements
+- Windows + PowerPoint (desktop COM automation)
+- Phone and PC on the same WiFi/LAN
+- Node.js 18+ for the React app
+
+## Project structure
+```
+.
+├── ppt-remote-desktop/   # Windows GUI + control server
+│   ├── app.py
+│   └── README.md
+└── ppt-remote-react/     # Phone PWA
+    ├── src/
+    ├── public/
+    └── README.md
+```
+
+## License
+MIT
