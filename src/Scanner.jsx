@@ -76,6 +76,11 @@ export default function Scanner({ onConnect }) {
     setStatus('Connecting…')
     try {
       const r = await fetch(`${serverUrl}/api/ping?t=${encodeURIComponent(token)}`)
+      if (r.status === 401) {
+        setConnecting(false)
+        setStatus('This code has expired — the PC app was restarted. Scan the current QR code shown on it.')
+        return
+      }
       if (!r.ok) throw new Error()
       if (navigator.vibrate) navigator.vibrate(15)
       onConnect({ serverUrl, token })
