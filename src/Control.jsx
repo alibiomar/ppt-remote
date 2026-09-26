@@ -110,7 +110,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
     }
   }, [relay, session, token, onDisconnect])
 
-  function haptic(duration = 8) {
+  function haptic(duration = 20) {
     const now = Date.now()
     if (now - lastHapticRef.current < 120) return
     lastHapticRef.current = now
@@ -123,7 +123,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
     const socket = socketRef.current
     if (busyRef.current || !socket || socket.readyState !== WebSocket.OPEN || !connected || !desktopOnline) return
     busyRef.current = true
-    haptic()
+    haptic(20)
     socket.send(JSON.stringify({ type: 'command', action }))
     setTimeout(() => { busyRef.current = false }, 150)
   }
@@ -165,7 +165,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
       }
       setCalibration(null)
       setMotionEnabled(true)
-      haptic(15)
+      haptic(20)
     } catch (error) {
       setMotionEnabled(false)
       setMotionError(error.message || 'Could not access iPhone motion sensors.')
@@ -175,7 +175,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
   function calibrateMotion() {
     setCalibration(null)
     smoothMotionRef.current = { x: 0.5, y: 0.5 }
-    haptic(12)
+    haptic(20)
     setTimeout(() => setCalibration({ beta: window.__pptLastBeta || 0, gamma: window.__pptLastGamma || 0 }), 0)
   }
 
@@ -212,7 +212,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
   }, [motionEnabled, pointerMode, calibration, motionAxis, connected, desktopOnline])
 
   function hidePointer() {
-    haptic()
+    haptic(20)
     const socket = socketRef.current
     if (socket?.readyState === WebSocket.OPEN && connected && desktopOnline) {
       socket.send(JSON.stringify({ type: 'command', action: 'laser_off' }))
@@ -243,19 +243,14 @@ export default function Control({ relay, session, token, onDisconnect }) {
       {data.slide != null && data.total != null && (
         <div className="progress-panel" aria-label={`Slide ${data.slide} of ${data.total}`}>
           <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
-          {dotCount > 0 && (
-            <div className="progress-dots" aria-hidden="true">
-              {Array.from({ length: dotCount }, (_, index) => <i key={index} className={index + 1 === slide ? 'active' : index + 1 < slide ? 'passed' : ''} />)}
-            </div>
-          )}
         </div>
       )}
 
       <div className="utility-row">
-        <button className="btn" onPointerDown={() => haptic()} onClick={() => send('start')} disabled={!connected || !desktopOnline}><Play size={16} />Start</button>
-        <button className="btn btn-danger-text" onPointerDown={() => haptic()} onClick={() => send('end')} disabled={!connected || !desktopOnline}><Square size={16} />End</button>
-        <button className={`btn ${pointerOpen ? 'btn-primary' : ''}`} onPointerDown={() => haptic()} onClick={() => setPointerOpen(true)} disabled={!connected || !desktopOnline} aria-label="Open laser pointer"><Pointer size={18} /></button>
-        <button className="btn btn-rescan btn-ghost" onPointerDown={() => haptic()} onClick={onDisconnect} aria-label="Scan another presentation"><QrCode size={18} /></button>
+        <button className="btn" onPointerDown={() => haptic(20)} onClick={() => send('start')} disabled={!connected || !desktopOnline}><Play size={16} />Start</button>
+        <button className="btn btn-danger-text" onPointerDown={() => haptic(20)} onClick={() => send('end')} disabled={!connected || !desktopOnline}><Square size={16} />End</button>
+        <button className={`btn ${pointerOpen ? 'btn-primary' : ''}`} onPointerDown={() => haptic(20)} onClick={() => setPointerOpen(true)} disabled={!connected || !desktopOnline} aria-label="Open laser pointer"><Pointer size={18} /></button>
+        <button className="btn btn-rescan btn-ghost" onPointerDown={() => haptic(20)} onClick={onDisconnect} aria-label="Scan another presentation"><QrCode size={18} /></button>
       </div>
 
       <div className="notes-card">
@@ -264,8 +259,8 @@ export default function Control({ relay, session, token, onDisconnect }) {
       </div>
 
       <div className="controls-row">
-        <button className="btn btn-lg" onPointerDown={() => haptic()} onClick={() => send('prev')} disabled={!connected || !desktopOnline}><ChevronLeft size={20} />Prev</button>
-        <button className="btn btn-lg btn-primary" onPointerDown={() => haptic()} onClick={() => send('next')} disabled={!connected || !desktopOnline}>Next<ChevronRight size={20} /></button>
+        <button className="btn btn-lg" onPointerDown={() => haptic(20)} onClick={() => send('prev')} disabled={!connected || !desktopOnline}><ChevronLeft size={20} />Prev</button>
+        <button className="btn btn-lg btn-primary" onPointerDown={() => haptic(20)} onClick={() => send('next')} disabled={!connected || !desktopOnline}>Next<ChevronRight size={20} /></button>
       </div>
 
       <div className="status-bar"><span className="status-dot" />{status}</div>
@@ -274,21 +269,21 @@ export default function Control({ relay, session, token, onDisconnect }) {
         <div className="pointer-sheet" role="dialog" aria-label="Laser pointer">
           <div className="pointer-sheet-header"><div><strong>Laser pointer</strong><span>{pointerMode === 'motion' ? 'Tilt your iPhone to point' : 'Drag on the pad to point'}</span></div><button className="close-pointer" onClick={hidePointer} aria-label="Close laser pointer"><X size={20} /></button></div>
           <div className="pointer-mode-switch" role="tablist" aria-label="Pointer input mode">
-            <button className={pointerMode === 'touch' ? 'active' : ''} onClick={() => { haptic(); setPointerMode('touch') }}>Touch</button>
-            <button className={pointerMode === 'motion' ? 'active' : ''} onClick={() => { haptic(); setPointerMode('motion') }}>Motion</button>
+            <button className={pointerMode === 'touch' ? 'active' : ''} onClick={() => { haptic(20); setPointerMode('touch') }}>Touch</button>
+            <button className={pointerMode === 'motion' ? 'active' : ''} onClick={() => { haptic(20); setPointerMode('motion') }}>Motion</button>
           </div>
           {pointerMode === 'motion' ? (
             <div className="motion-pointer-panel">
               {!motionEnabled ? <button className="btn btn-lg btn-primary" onClick={enableMotionPointer}>Enable iPhone motion</button> : <button className="btn btn-lg" onClick={calibrateMotion}>Calibrate center</button>}
-              {motionEnabled && <div className="axis-selector" role="group" aria-label="Motion axis"><span>Control</span><button className={motionAxis === 'both' ? 'active' : ''} onClick={() => { haptic(); setMotionAxis('both') }}>Both axes</button><button className={motionAxis === 'horizontal' ? 'active' : ''} onClick={() => { haptic(); setMotionAxis('horizontal') }}>Horizontal</button><button className={motionAxis === 'vertical' ? 'active' : ''} onClick={() => { haptic(); setMotionAxis('vertical') }}>Vertical</button></div>}
+              {motionEnabled && <div className="axis-selector" role="group" aria-label="Motion axis"><span>Control</span><button className={motionAxis === 'both' ? 'active' : ''} onClick={() => { haptic(20); setMotionAxis('both') }}>Both axes</button><button className={motionAxis === 'horizontal' ? 'active' : ''} onClick={() => { haptic(20); setMotionAxis('horizontal') }}>Horizontal</button><button className={motionAxis === 'vertical' ? 'active' : ''} onClick={() => { haptic(20); setMotionAxis('vertical') }}>Vertical</button></div>}
               {motionEnabled && !calibration && <p>Hold your phone in a comfortable center position, then tap Calibrate.</p>}
               {motionEnabled && calibration && <p>Motion control active. Tilt gently to move the pointer.</p>}
               {motionError && <p className="motion-error">{motionError}</p>}
             </div>
           ) : (
-            <div className="pointer-pad" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); haptic(5); sendPointer(event) }} onPointerMove={sendPointer} onPointerUp={sendPointer}><div className="pointer-crosshair" /></div>
+            <div className="pointer-pad" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); haptic(20); sendPointer(event) }} onPointerMove={sendPointer} onPointerUp={sendPointer}></div>
           )}
-          <button className="btn btn-lg btn-danger-text pointer-done" onPointerDown={() => haptic()} onClick={hidePointer}>Turn off pointer</button>
+          <button className="btn btn-lg btn-danger-text pointer-done" onPointerDown={() => haptic(20)} onClick={hidePointer}>Turn off pointer</button>
         </div>
       )}
     </div>
