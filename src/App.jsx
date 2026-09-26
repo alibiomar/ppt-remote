@@ -20,15 +20,16 @@ export default function App() {
     setConnection(conn)
   }, [])
 
-  // First launch: the phone tapped the QR link, which loaded this page
-  // same-origin with ?t=... already in the URL. Auto-connect from that
-  // instead of asking the user to scan again inside the app, then strip
-  // the token from the visible URL/history.
+  // First launch: the phone tapped the QR link, which opened this Vercel
+  // page with ?api=<https tunnel URL>&t=<token> attached. Auto-connect
+  // from that instead of asking the user to scan again inside the app,
+  // then strip the sensitive params from the visible URL/history.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const api = params.get('api')
     const token = params.get('t')
-    if (token) {
-      connect({ serverUrl: window.location.origin, token })
+    if (api && token) {
+      connect({ serverUrl: api, token })
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [connect])

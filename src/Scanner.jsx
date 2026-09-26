@@ -61,13 +61,20 @@ export default function Scanner({ onConnect }) {
     try {
       const parsed = new URL(raw.trim())
       token = parsed.searchParams.get('t')
-      parsed.search = ''
-      serverUrl = parsed.toString().replace(/\/$/, '')
+      const api = parsed.searchParams.get('api')
+      if (api) {
+        // Vercel page link: ?api=<tunnel-url>&t=<token>
+        serverUrl = api.replace(/\/$/, '')
+      } else {
+        // Direct tunnel/API link scanned or pasted on its own
+        parsed.search = ''
+        serverUrl = parsed.toString().replace(/\/$/, '')
+      }
     } catch {
       setStatus('That QR code doesn\'t look like a PPT Remote link.')
       return
     }
-    if (!token) {
+    if (!token || !serverUrl) {
       setStatus('This link is missing its access code — rescan the current QR on the PC.')
       return
     }
@@ -86,7 +93,7 @@ export default function Scanner({ onConnect }) {
       onConnect({ serverUrl, token })
     } catch {
       setConnecting(false)
-      setStatus('Could not reach server — check you\'re on the same WiFi as the PC.')
+      setStatus('Could not reach the PC — check it\'s running and connected to the internet.')
     }
   }
 
@@ -113,7 +120,7 @@ export default function Scanner({ onConnect }) {
 
       <div className="manual-entry">
         <input
-          placeholder="http://192.168.x.x:5000/?t=..."
+          placeholder="https://xxxx.trycloudflare.com/?t=..."
           value={manualUrl}
           onChange={e => setManualUrl(e.target.value)}
         />
@@ -122,7 +129,7 @@ export default function Scanner({ onConnect }) {
         </button>
       </div>
       <div className="scan-caption" style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>
-        Paste the full link shown under the QR on the PC — it includes the access code.
+        Paste the tunnel address shown on the PC — it includes the access code.
       </div>
     </div>
   )
