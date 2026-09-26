@@ -18,6 +18,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
   const reconnectRef = useRef(null)
   const busyRef = useRef(false)
   const pointerThrottleRef = useRef(0)
+  const lastHapticRef = useRef(0)
 
   useEffect(() => {
     let cancelled = false
@@ -103,7 +104,12 @@ export default function Control({ relay, session, token, onDisconnect }) {
   }, [relay, session, token, onDisconnect])
 
   function haptic(duration = 8) {
-    if (navigator.vibrate) navigator.vibrate(duration)
+    const now = Date.now()
+    if (now - lastHapticRef.current < 120) return
+    lastHapticRef.current = now
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(duration)
+    }
   }
 
   function send(action) {
@@ -168,10 +174,10 @@ export default function Control({ relay, session, token, onDisconnect }) {
       )}
 
       <div className="utility-row">
-        <button className="btn" onClick={() => send('start')} disabled={!connected || !desktopOnline}><Play size={16} />Start</button>
-        <button className="btn btn-danger-text" onClick={() => send('end')} disabled={!connected || !desktopOnline}><Square size={16} />End</button>
-        <button className={`btn ${pointerOpen ? 'btn-primary' : ''}`} onClick={() => { haptic(); setPointerOpen(true) }} disabled={!connected || !desktopOnline} aria-label="Open laser pointer"><Pointer size={18} /></button>
-        <button className="btn btn-rescan btn-ghost" onClick={onDisconnect} aria-label="Scan another presentation"><QrCode size={18} /></button>
+        <button className="btn" onPointerDown={() => haptic()} onClick={() => send('start')} disabled={!connected || !desktopOnline}><Play size={16} />Start</button>
+        <button className="btn btn-danger-text" onPointerDown={() => haptic()} onClick={() => send('end')} disabled={!connected || !desktopOnline}><Square size={16} />End</button>
+        <button className={`btn ${pointerOpen ? 'btn-primary' : ''}`} onPointerDown={() => haptic()} onClick={() => setPointerOpen(true)} disabled={!connected || !desktopOnline} aria-label="Open laser pointer"><Pointer size={18} /></button>
+        <button className="btn btn-rescan btn-ghost" onPointerDown={() => haptic()} onClick={onDisconnect} aria-label="Scan another presentation"><QrCode size={18} /></button>
       </div>
 
       <div className="notes-card">
@@ -180,8 +186,8 @@ export default function Control({ relay, session, token, onDisconnect }) {
       </div>
 
       <div className="controls-row">
-        <button className="btn btn-lg" onClick={() => send('prev')} disabled={!connected || !desktopOnline}><ChevronLeft size={20} />Prev</button>
-        <button className="btn btn-lg btn-primary" onClick={() => send('next')} disabled={!connected || !desktopOnline}>Next<ChevronRight size={20} /></button>
+        <button className="btn btn-lg" onPointerDown={() => haptic()} onClick={() => send('prev')} disabled={!connected || !desktopOnline}><ChevronLeft size={20} />Prev</button>
+        <button className="btn btn-lg btn-primary" onPointerDown={() => haptic()} onClick={() => send('next')} disabled={!connected || !desktopOnline}>Next<ChevronRight size={20} /></button>
       </div>
 
       <div className="status-bar"><span className="status-dot" />{status}</div>
@@ -190,7 +196,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
         <div className="pointer-sheet" role="dialog" aria-label="Laser pointer">
           <div className="pointer-sheet-header"><div><strong>Laser pointer</strong><span>Drag on the pad to point on the slide</span></div><button className="close-pointer" onClick={hidePointer} aria-label="Close laser pointer"><X size={20} /></button></div>
           <div className="pointer-pad" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); haptic(5); sendPointer(event) }} onPointerMove={sendPointer} onPointerUp={sendPointer}><div className="pointer-crosshair" /></div>
-          <button className="btn btn-lg btn-danger-text pointer-done" onClick={hidePointer}>Turn off pointer</button>
+          <button className="btn btn-lg btn-danger-text pointer-done" onPointerDown={() => haptic()} onClick={hidePointer}>Turn off pointer</button>
         </div>
       )}
     </div>
