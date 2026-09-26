@@ -14,11 +14,17 @@ export default function Control({ relay, session, token, onDisconnect }) {
   const [desktopOnline, setDesktopOnline] = useState(false)
   const [status, setStatus] = useState('Connecting to relay…')
   const [pointerOpen, setPointerOpen] = useState(false)
+  const [pointerMode, setPointerMode] = useState('touch')
+  const [motionEnabled, setMotionEnabled] = useState(false)
+  const [motionError, setMotionError] = useState('')
+  const [calibration, setCalibration] = useState(null)
   const socketRef = useRef(null)
   const reconnectRef = useRef(null)
   const busyRef = useRef(false)
   const pointerThrottleRef = useRef(0)
   const lastHapticRef = useRef(0)
+  const pointerPositionRef = useRef({ x: 0.5, y: 0.5 })
+  const smoothMotionRef = useRef({ x: 0.5, y: 0.5 })
 
   useEffect(() => {
     let cancelled = false
@@ -133,6 +139,76 @@ export default function Control({ relay, session, token, onDisconnect }) {
     socket.send(JSON.stringify({ type: 'pointer', x, y }))
   }
 
+  function sendPointerPosition(x, y) {
+    const socket = socketRef.current
+    if (!socket || socket.readyState !== WebSocket.OPEN || !connected || !desktopOnline) return
+    const now = performance.now()
+    if (now - pointerThrottleRef.current < 35) return
+    pointerThrottleRef.current = now
+    const next = {
+      x: Math.max(0, Math.min(1, x)),
+      y: Math.max(0, Math.min(1, y))
+    }
+    pointerPositionRef.current = next
+    socket.send(JSON.stringify({ type: 'pointer', ...next }))
+  }
+
+  async function enableMotionPointer() {
+    setMotionError('')
+    try {
+      const Orientation = window.DeviceOrientationEvent
+      if (!Orientation) throw new Error('Motion sensors are not available in this browser.')
+      if (typeof Orientation.requestPermission === 'function') {
+        const permission = await Orientation.requestPermission()
+        if (permission !== 'granted') throw new Error('Motion permission was denied.')
+      }
+      setCalibration(null)
+      setMotionEnabled(true)
+      haptic(15)
+    } catch (error) {
+      setMotionEnabled(false)
+      setMotionError(error.message || 'Could not access iPhone motion sensors.')
+    }
+  }
+
+  function calibrateMotion() {
+    setCalibration(null)
+    smoothMotionRef.current = { ...pointerPositionRef.current }
+    haptic(12)
+    setTimeout(() => setCalibration({ beta: window.__pptLastBeta || 0, gamma: window.__pptLastGamma || 0 }), 0)
+  }
+
+  useEffect(() => {
+    if (!motionEnabled || pointerMode !== 'motion') return undefined
+
+    function handleOrientation(event) {
+      const beta = Number.isFinite(event.beta) ? event.beta : 0
+      const gamma = Number.isFinite(event.gamma) ? event.gamma : 0
+      window.__pptLastBeta = beta
+      window.__pptLastGamma = gamma
+      if (!calibration) return
+
+      const sensitivity = 42
+      const deadZone = 1.5
+      const deltaX = Math.abs(gamma - calibration.gamma) < deadZone ? 0 : gamma - calibration.gamma
+      const deltaY = Math.abs(beta - calibration.beta) < deadZone ? 0 : beta - calibration.beta
+      const target = {
+        x: Math.max(0, Math.min(1, 0.5 + deltaX / sensitivity)),
+        y: Math.max(0, Math.min(1, 0.5 + deltaY / sensitivity))
+      }
+      const previous = smoothMotionRef.current
+      const smoothed = {
+        x: previous.x + (target.x - previous.x) * 0.22,
+        y: previous.y + (target.y - previous.y) * 0.22
+      }
+      smoothMotionRef.current = smoothed
+      sendPointerPosition(smoothed.x, smoothed.y)
+    }
+
+    window.addEventListener('deviceorientation', handleOrientation, true)
+    return () => window.removeEventListener('deviceorientation', handleOrientation, true)
+  }, [motionEnabled, pointerMode, calibration, connected, desktopOnline])
+
   function hidePointer() {
     haptic()
     const socket = socketRef.current
@@ -194,8 +270,21 @@ export default function Control({ relay, session, token, onDisconnect }) {
 
       {pointerOpen && (
         <div className="pointer-sheet" role="dialog" aria-label="Laser pointer">
-          <div className="pointer-sheet-header"><div><strong>Laser pointer</strong><span>Drag on the pad to point on the slide</span></div><button className="close-pointer" onClick={hidePointer} aria-label="Close laser pointer"><X size={20} /></button></div>
-          <div className="pointer-pad" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); haptic(5); sendPointer(event) }} onPointerMove={sendPointer} onPointerUp={sendPointer}><div className="pointer-crosshair" /></div>
+          <div className="pointer-sheet-header"><div><strong>Laser pointer</strong><span>{pointerMode === 'motion' ? 'Tilt your iPhone to point' : 'Drag on the pad to point'}</span></div><button className="close-pointer" onClick={hidePointer} aria-label="Close laser pointer"><X size={20} /></button></div>
+          <div className="pointer-mode-switch" role="tablist" aria-label="Pointer input mode">
+            <button className={pointerMode === 'touch' ? 'active' : ''} onClick={() => { haptic(); setPointerMode('touch') }}>Touch</button>
+            <button className={pointerMode === 'motion' ? 'active' : ''} onClick={() => { haptic(); setPointerMode('motion') }}>Motion</button>
+          </div>
+          {pointerMode === 'motion' ? (
+            <div className="motion-pointer-panel">
+              {!motionEnabled ? <button className="btn btn-lg btn-primary" onClick={enableMotionPointer}>Enable iPhone motion</button> : <button className="btn btn-lg" onClick={calibrateMotion}>Calibrate center</button>}
+              {motionEnabled && !calibration && <p>Hold your phone in a comfortable center position, then tap Calibrate.</p>}
+              {motionEnabled && calibration && <p>Motion control active. Tilt gently to move the pointer.</p>}
+              {motionError && <p className="motion-error">{motionError}</p>}
+            </div>
+          ) : (
+            <div className="pointer-pad" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); haptic(5); sendPointer(event) }} onPointerMove={sendPointer} onPointerUp={sendPointer}><div className="pointer-crosshair" /></div>
+          )}
           <button className="btn btn-lg btn-danger-text pointer-done" onPointerDown={() => haptic()} onClick={hidePointer}>Turn off pointer</button>
         </div>
       )}

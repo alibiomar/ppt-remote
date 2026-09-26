@@ -284,3 +284,11 @@ input { font-family: inherit; -webkit-appearance: none; }
 .pointer-pad { position: relative; height: min(48vh, 320px); overflow: hidden; touch-action: none; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--separator)); border-radius: 18px; background: radial-gradient(circle at center, color-mix(in srgb, var(--accent) 12%, transparent), transparent 62%), repeating-linear-gradient(0deg, transparent 0 39px, var(--separator) 40px), repeating-linear-gradient(90deg, transparent 0 39px, var(--separator) 40px); }
 .pointer-crosshair { position: absolute; inset: 50% auto auto 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); border: 2px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent); pointer-events: none; }
 .pointer-done { width: 100%; }
+
+.pointer-mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--card-2); }
+.pointer-mode-switch button { border: 0; border-radius: 9px; padding: 9px; color: var(--text-secondary); background: transparent; font: inherit; font-size: 14px; font-weight: 600; }
+.pointer-mode-switch button.active { color: var(--text); background: var(--card); box-shadow: var(--shadow); }
+.motion-pointer-panel { display: grid; gap: 12px; min-height: min(48vh, 240px); align-content: center; text-align: center; }
+.motion-pointer-panel .btn { width: 100%; }
+.motion-pointer-panel p { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
+.motion-pointer-panel .motion-error { color: var(--danger); }
