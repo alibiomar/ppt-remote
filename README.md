@@ -39,6 +39,8 @@ python app.py
 
 The desktop app creates a random session ID and token, connects to Render, and displays a QR code. Scan it with the iPhone. Do not share the QR code: possession of it grants control of that presentation session.
 
+Use the **Open Presentation…** button in the desktop window to choose a `.ppt`, `.pptx`, `.pptm`, `.pps`, or `.ppsx` file. PowerPoint will be launched if needed.
+
 ## Relay protocol
 
 Desktop handshake:
