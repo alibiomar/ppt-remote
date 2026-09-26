@@ -1,79 +1,68 @@
-# PPT Remote
+# PPT Remote — Render relay edition
 
-Control a PowerPoint presentation from your phone. Scan a QR code to
-connect, flip slides, and read speaker notes live — no cables, no
-PowerPoint Presenter View needed.
+Control PowerPoint from an iPhone PWA hosted on Vercel, even when the phone and PC are on different Wi-Fi networks.
 
-## How it works
-
-```
-┌─────────────┐        HTTPS/QR         ┌──────────────────┐        COM        ┌─────────────┐
-│  Phone (PWA) │ ───────────────────────▶│  Desktop app (PC) │ ─────────────────▶│  PowerPoint  │
-│  React app   │◀─────────────────────── │  Flask + cheroot  │◀────────────────── │              │
-└─────────────┘      next/prev/state     └──────────────────┘                   └─────────────┘
+```text
+iPhone PWA on Vercel ── WSS ── Render relay ── WSS ── Windows desktop app ── PowerPoint
 ```
 
-- **`ppt-remote-desktop/`** — Windows desktop app. Shows a QR code,
-  runs a local HTTPS server, drives PowerPoint via COM automation.
-- **`ppt-remote-react/`** — Phone-side PWA (React + Vite). Opens
-  straight into a camera scanner; scan the desktop app's QR to connect.
+The Render service is a lightweight authenticated WebSocket relay. It does not access PowerPoint or store presentation content.
 
-## Quick start
+## Deploy the relay
 
-**On the PC:**
+1. Push this project to GitHub.
+2. In Render, choose **New → Blueprint** and select the repository.
+3. Render reads `render.yaml` and deploys the `relay` service.
+4. Copy the service URL, such as `https://ppt-remote-relay.onrender.com`.
+
+The relay exposes `/healthz` and WebSocket connections. Its in-memory sessions expire after two hours, so use a single Render instance for this version.
+
+## Configure the Vercel PWA
+
+Deploy `ppt-remote/` to Vercel:
+
 ```bash
-cd ppt-remote-desktop
-pip install flask cheroot cryptography qrcode[pil] pywin32 pillow
-python app.py
-```
-Open your presentation in PowerPoint first. A window appears with a
-QR code and an HTTPS URL.
-
-**On the phone:**
-```bash
-cd ppt-remote-react
+cd ppt-remote
 npm install
 npm run build
-vercel --prod   # or serve dist/ any static host
-```
-Open the deployed URL on your phone. The scanner opens automatically.
-
-**One-time per phone:** the desktop app uses a self-signed cert.
-Visit its URL directly in the phone browser once and accept the
-"not secure" warning — otherwise the scan connects but requests fail
-silently.
-
-## Features
-- QR-based pairing, no manual IP typing
-- Live speaker notes, polled every second
-- Next / Prev / Start / End show controls
-- Installable as a PWA (Add to Home Screen)
-- iOS-style UI with light/dark mode
-- Production WSGI server (cheroot) on the desktop side
-
-## Build a standalone .exe
-```bash
-cd ppt-remote-desktop
-pip install pyinstaller
-pyinstaller --onefile --noconsole --name "PPT Remote" app.py
+vercel --prod
 ```
 
-## Requirements
-- Windows + PowerPoint (desktop COM automation)
-- Phone and PC on the same WiFi/LAN
-- Node.js 18+ for the React app
+## Configure the Windows app
 
-## Project structure
-```
-.
-├── ppt-remote-desktop/   # Windows GUI + control server
-│   ├── app.py
-│   └── README.md
-└── ppt-remote-react/     # Phone PWA
-    ├── src/
-    ├── public/
-    └── README.md
+```powershell
+$env:PPT_RELAY_URL = "wss://ppt-remote-relay.onrender.com"
+$env:PPT_PWA_URL = "https://your-pwa.vercel.app"
+pip install -r requirements.txt
+python app.py
 ```
 
-## License
-MIT
+The desktop app creates a random session ID and token, connects to Render, and displays a QR code. Scan it with the iPhone. Do not share the QR code: possession of it grants control of that presentation session.
+
+## Relay protocol
+
+Desktop handshake:
+
+```json
+{"type":"create","role":"desktop","session":"...","token":"..."}
+```
+
+Phone handshake:
+
+```json
+{"type":"join","role":"phone","session":"...","token":"..."}
+```
+
+Phone command:
+
+```json
+{"type":"command","action":"next"}
+```
+
+Desktop state update:
+
+```json
+{"type":"state","data":{"slide":4,"total":18,"title":"Quarterly Review","notes":"..."}}
+```
+
+Supported actions are `next`, `prev`, `start`, and `end`. The relay validates the session token, allows one desktop and one phone, limits payloads to 64 KB, sends ping heartbeats, and expires inactive sessions.
