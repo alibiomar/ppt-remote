@@ -18,6 +18,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
   const [motionEnabled, setMotionEnabled] = useState(false)
   const [motionError, setMotionError] = useState('')
   const [calibration, setCalibration] = useState(null)
+  const [motionAxis, setMotionAxis] = useState('both')
   const socketRef = useRef(null)
   const reconnectRef = useRef(null)
   const busyRef = useRef(false)
@@ -173,7 +174,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
 
   function calibrateMotion() {
     setCalibration(null)
-    smoothMotionRef.current = { ...pointerPositionRef.current }
+    smoothMotionRef.current = { x: 0.5, y: 0.5 }
     haptic(12)
     setTimeout(() => setCalibration({ beta: window.__pptLastBeta || 0, gamma: window.__pptLastGamma || 0 }), 0)
   }
@@ -188,18 +189,19 @@ export default function Control({ relay, session, token, onDisconnect }) {
       window.__pptLastGamma = gamma
       if (!calibration) return
 
-      const sensitivity = 42
-      const deadZone = 1.5
+      const sensitivity = 48
+      const deadZone = 2
       const deltaX = Math.abs(gamma - calibration.gamma) < deadZone ? 0 : gamma - calibration.gamma
       const deltaY = Math.abs(beta - calibration.beta) < deadZone ? 0 : beta - calibration.beta
       const target = {
-        x: Math.max(0, Math.min(1, 0.5 + deltaX / sensitivity)),
-        y: Math.max(0, Math.min(1, 0.5 + deltaY / sensitivity))
+        x: motionAxis === 'vertical' ? 0.5 : Math.max(0, Math.min(1, 0.5 + deltaX / sensitivity)),
+        y: motionAxis === 'horizontal' ? 0.5 : Math.max(0, Math.min(1, 0.5 + deltaY / sensitivity))
       }
       const previous = smoothMotionRef.current
       const smoothed = {
-        x: previous.x + (target.x - previous.x) * 0.22,
-        y: previous.y + (target.y - previous.y) * 0.22
+        // A lower factor removes hand tremor while retaining deliberate tilts.
+        x: previous.x + (target.x - previous.x) * 0.12,
+        y: previous.y + (target.y - previous.y) * 0.12
       }
       smoothMotionRef.current = smoothed
       sendPointerPosition(smoothed.x, smoothed.y)
@@ -207,7 +209,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
 
     window.addEventListener('deviceorientation', handleOrientation, true)
     return () => window.removeEventListener('deviceorientation', handleOrientation, true)
-  }, [motionEnabled, pointerMode, calibration, connected, desktopOnline])
+  }, [motionEnabled, pointerMode, calibration, motionAxis, connected, desktopOnline])
 
   function hidePointer() {
     haptic()
@@ -278,6 +280,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
           {pointerMode === 'motion' ? (
             <div className="motion-pointer-panel">
               {!motionEnabled ? <button className="btn btn-lg btn-primary" onClick={enableMotionPointer}>Enable iPhone motion</button> : <button className="btn btn-lg" onClick={calibrateMotion}>Calibrate center</button>}
+              {motionEnabled && <div className="axis-selector" role="group" aria-label="Motion axis"><span>Control</span><button className={motionAxis === 'both' ? 'active' : ''} onClick={() => { haptic(); setMotionAxis('both') }}>Both axes</button><button className={motionAxis === 'horizontal' ? 'active' : ''} onClick={() => { haptic(); setMotionAxis('horizontal') }}>Horizontal</button><button className={motionAxis === 'vertical' ? 'active' : ''} onClick={() => { haptic(); setMotionAxis('vertical') }}>Vertical</button></div>}
               {motionEnabled && !calibration && <p>Hold your phone in a comfortable center position, then tap Calibrate.</p>}
               {motionEnabled && calibration && <p>Motion control active. Tilt gently to move the pointer.</p>}
               {motionError && <p className="motion-error">{motionError}</p>}
