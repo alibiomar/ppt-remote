@@ -194,8 +194,8 @@ export default function Control({ relay, session, token, onDisconnect }) {
       const deltaX = Math.abs(gamma - calibration.gamma) < deadZone ? 0 : gamma - calibration.gamma
       const deltaY = Math.abs(beta - calibration.beta) < deadZone ? 0 : beta - calibration.beta
       const target = {
-        x: motionAxis === 'vertical' ? 0.5 : Math.max(0, Math.min(1, 0.5 - deltaX / sensitivity)),
-        y: motionAxis === 'horizontal' ? 0.5 : Math.max(0, Math.min(1, 0.5 + deltaY / sensitivity))
+        x: motionAxis === 'vertical' ? 0.5 : Math.max(0, Math.min(1, 0.5 + deltaX / sensitivity)),
+        y: motionAxis === 'horizontal' ? 0.5 : Math.max(0, Math.min(1, 0.5 - deltaY / sensitivity))
       }
       const previous = smoothMotionRef.current
       const smoothed = {
