@@ -221,6 +221,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
   }
 
   const hasNotes = typeof data.notes === 'string' && data.notes.trim().length > 0
+  const notesText = hasNotes ? data.notes.replace(/\r\n|\r|\v/g, '\n') : ''
   const slide = Number(data.slide)
   const total = Number(data.total)
   const progress = Number.isFinite(slide) && Number.isFinite(total) && total > 0 ? Math.min(100, Math.max(0, (slide / total) * 100)) : 0
@@ -255,7 +256,7 @@ export default function Control({ relay, session, token, onDisconnect }) {
 
       <div className="notes-card">
         <div className="notes-label">Speaker Notes</div>
-        <div className={`notes-text ${hasNotes ? '' : 'empty'}`}>{hasNotes ? data.notes : data.error ? data.error : 'No notes for this slide.'}</div>
+<div className={`notes-text ${hasNotes ? '' : 'empty'}`} style={{ whiteSpace: 'pre-wrap' }}>{hasNotes ? notesText : data.error ? data.error : 'No notes for this slide.'}</div>
       </div>
 
       <div className="controls-row">
